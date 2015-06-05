@@ -2,6 +2,8 @@ ABSOLUTE_FILENAME=`readlink -e "$0"`
 APP_DIRECTORY=`dirname "$ABSOLUTE_FILENAME"`
 
 APP_CONFIGS=$(ls $APP_DIRECTORY/config)
+
+# If the user specified a particular configuration
 while getopts "c:" opt;
 do
 case $opt in
@@ -16,35 +18,34 @@ c)	echo "Loading config: $OPTARG.sh"
 esac	
 done
 
+# Include zip function
+source $APP_DIRECTORY/act/zip.sh
+
+# for each declared config
 for config in $APP_CONFIGS; do
 	source $APP_DIRECTORY'/config/'$config
 	BACKUP_WAS_MAKED=0
 	
-	if ! test -d $APP_DIRECTORY/$BACKUP_DIR
+	if ! test -d $APP_DIRECTORY/$TMP_BACKUP_DIR
 		then
-		mkdir $APP_DIRECTORY/$BACKUP_DIR
+		mkdir $APP_DIRECTORY/$TMP_BACKUP_DIR
 	fi
 
-	if test $MONGO_DBNAMES
+	cd $APP_DIRECTORY/$TMP_BACKUP_DIR/
+	# Include each backup-driver and execute it
+	for driver in $(ls $APP_DIRECTORY/driver/); do
+		source $APP_DIRECTORY'/act/pre_driver.sh'
+		source $APP_DIRECTORY/driver/$driver
+		source $APP_DIRECTORY'/act/post_driver.sh'
+	done
+
+	# Sync backups if necessary
+	if ! test `ls . | wc -l` -eq 0 
 		then
-		source $APP_DIRECTORY'/inc/mongo.inc.sh'
-		BACKUP_WAS_MAKED=1
+		source $APP_DIRECTORY'/act/sync.sh'
 	fi
 
-	if test $MYSQL_DBNAMES
-		then
-		source $APP_DIRECTORY'/inc/mysql.inc.sh'
-		BACKUP_WAS_MAKED=1
-	fi
-
-	if test $FOLDERS
-		then
-		source $APP_DIRECTORY'/inc/folder.inc.sh'
-		BACKUP_WAS_MAKED=1
-	fi
-
-	if test $BACKUP_WAS_MAKED -eq 1
-		then
-		source $APP_DIRECTORY'/inc/sync.inc.sh'
-	fi
+	cd -
+	# Clear temp backup dir
+	rm -rf $APP_DIRECTORY/$TMP_BACKUP_DIR/
 done
