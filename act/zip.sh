@@ -11,5 +11,5 @@ function zip {
 	fi
 		TAR_PARAMS=$TAR_PARAMS'f'
 
-	tar $TAR_PARAMS $2 $1
+   tar --ignore-command-error --ignore-failed-read $TAR_PARAMS $2 $1
 }
